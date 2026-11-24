@@ -625,10 +625,9 @@ body.amoled .set-sec { background: #0b0b0c; }
   display: grid; place-items: center; font-size: 16px; background: var(--bg-input); color: var(--muted); opacity: 0;
   transition: transform .12s, background .12s; pointer-events: none; }
 .swipe-ico.ready { background: var(--blurple); color: #fff; transform: scale(1.15); }
-.react-pop { position: fixed; z-index: 200; font-size: 44px; pointer-events: none; transform: translate(-50%, -50%);
-  animation: reactPop .7s ease-out forwards; }
-@keyframes reactPop { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 25% { transform: translate(-50%, -60%) scale(1.15); opacity: 1; }
-  100% { transform: translate(-50%, -120%) scale(.9); opacity: 0; } }
+.quick-react { gap: 4px; }
+.quick-react button { min-width: 0; height: 44px; font-size: 22px; padding: 0; display: grid; place-items: center; }
+.quick-react button img { width: 26px; height: 26px; object-fit: contain; }
 .set-seg.emo button { font-size: 20px; }
 .set-seg.emo button:last-child { font-size: 13px; }
 

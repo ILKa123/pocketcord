@@ -308,7 +308,9 @@ async fn guild_members(state: State<'_, AppState>, guild_id: String) -> R {
 async fn api_request(state: State<'_, AppState>, method: String, path: String, body: Option<Value>) -> R {
     // + свой профиль (имя, аватар, «обо мне», местоимения) для вкладки «Профиль» в настройках
     let ok_path = (path.starts_with("/guilds/") || path.starts_with("/channels/")
-        || path == "/users/@me" || path == "/users/@me/profile")
+        || path == "/users/@me" || path == "/users/@me/profile"
+        // «Часто используемые» эмодзи аккаунта — только чтение
+        || (path == "/users/@me/settings-proto/2" && method == "GET"))
         && !path.contains("..") && !path.contains("://") && path.is_ascii();
     if !ok_path {
         return Err("недопустимый путь".into());

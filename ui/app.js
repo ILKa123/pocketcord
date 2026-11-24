@@ -1263,6 +1263,7 @@ S.search = { q: '', results: [], total: 0, loading: false, error: '' };
 function openSide(mode, { push = true } = {}) {
   if (!S.channelId && mode !== 'profile') return;
   if (push) pushPanel();
+  if (!wide()) { $('#input').blur(); hideAc(); } // клавиатура не должна висеть поверх панели
   S.side = mode;
   $('#app').classList.add('side-open');
   $('#app').classList.remove('drawer-open');
@@ -1575,7 +1576,7 @@ function closePanels(fromPop = false) {
   ['pins', 'search', 'members'].forEach(m => $(`#${m}Btn`).classList.remove('on'));
   if (panelPushed) { panelPushed = false; if (!fromPop) { ignorePop = true; history.back(); } }
 }
-function openDrawer() { if (wide()) return; pushPanel(); $('#app').classList.add('drawer-open'); $('#app').classList.remove('side-open'); }
+function openDrawer() { if (wide()) return; $('#input').blur(); hideAc(); pushPanel(); $('#app').classList.add('drawer-open'); $('#app').classList.remove('side-open'); }
 addEventListener('popstate', () => { if (ignorePop) { ignorePop = false; return; } closePanels(true); });
 
 // ---------------- просмотр фото: щипок, двойной тап, перетаскивание ----------------
@@ -1675,13 +1676,88 @@ function bindLightbox() {
 let sheetMsg = null;
 const findMsg = id => (S.msgs.get(S.channelId) || []).find(m => m.id === id) || (S.pins.get(S.channelId) || []).find(m => m.id === id);
 
+// ---------- «Часто используемые» эмодзи — берутся из аккаунта Discord (у каждого свои) ----------
+// Discord хранит их в настройках-protobuf (settings-proto/2): поле 6 — эмодзи в сообщениях, 13 — в реакциях.
+let EMOJI_SC = null;
+function scToEmoji(name) {
+  if (!EMOJI_SC) {
+    EMOJI_SC = Object.create(null);
+    for (const p of (typeof EMOJI_SC_RAW === 'string' ? EMOJI_SC_RAW : '').split('|')) { const i = p.indexOf('='); if (i > 0 && !(p.slice(0, i) in EMOJI_SC)) EMOJI_SC[p.slice(0, i)] = p.slice(i + 1); }
+    for (const [n, c] of Object.entries(EMOJI_NAMES)) if (!(n in EMOJI_SC)) EMOJI_SC[n] = c;
+  }
+  const tone = name.match(/^(.+)_tone([1-5])$/);
+  if (tone) { const b = EMOJI_SC[tone[1]]; return b ? b.replace(/️/g, '') + String.fromCodePoint(0x1F3FA + +tone[2]) : null; }
+  return EMOJI_SC[name] || null;
+}
+function pbRead(buf) { // минимальный разбор protobuf: [{f, v}] — v число или Uint8Array
+  const out = []; let i = 0;
+  const varint = () => { let r = 0, mul = 1, b; do { b = buf[i++]; r += (b & 127) * mul; mul *= 128; } while (b & 128 && i < buf.length); return r; };
+  while (i < buf.length) {
+    const tag = varint(), f = Math.floor(tag / 8), wt = tag & 7;
+    if (wt === 0) out.push({ f, v: varint() });
+    else if (wt === 2) { const n = varint(); out.push({ f, v: buf.subarray(i, i + n) }); i += n; }
+    else if (wt === 1) i += 8; else if (wt === 5) i += 4; else break;
+  }
+  return out;
+}
+function customEmojiName(id) {
+  for (const list of S.emojis.values()) { const e = (list || []).find(x => x.id === id); if (e) return e; }
+  for (const g of S.guilds) { const e = (g.emojis || []).find(x => x.id === id); if (e) return e; }
+  return null;
+}
+function parseFrecency(field) {
+  const items = [];
+  for (const ent of pbRead(field).filter(x => x.f === 1 && x.v instanceof Uint8Array)) {
+    const kv = pbRead(ent.v);
+    const key = new TextDecoder().decode(kv.find(x => x.f === 1)?.v || new Uint8Array());
+    const it = pbRead(kv.find(x => x.f === 2)?.v || new Uint8Array());
+    const num = f => { const x = it.find(y => y.f === f); return typeof x?.v === 'number' ? x.v : 0; };
+    const score = num(4) || num(3) || num(1);
+    let e = null;
+    if (/^\d{15,}$/.test(key)) { const c = customEmojiName(key); if (c) e = { id: key, name: c.name, animated: !!c.animated }; }
+    else { const ch = /^[\x20-\x7e]+$/.test(key) ? scToEmoji(key) : key; if (ch) e = { ch }; }
+    if (e) items.push({ e, score });
+  }
+  return items.sort((a, b) => b.score - a.score).map(x => x.e);
+}
+let frecencyLoading = false;
+async function loadFrecency() {
+  if (frecencyLoading || !B?.api) return;
+  frecencyLoading = true;
+  try {
+    const r = await B.api('GET', '/users/@me/settings-proto/2');
+    if (!r?.settings) return;
+    const bin = Uint8Array.from(atob(r.settings), c => c.charCodeAt(0));
+    const top = pbRead(bin);
+    const pick = f => { const x = top.find(y => y.f === f && y.v instanceof Uint8Array); return x ? parseFrecency(x.v).slice(0, 40) : []; };
+    const msg = pick(6), react = pick(13);
+    if (msg.length || react.length) store.set('frecency', { msg, react: react.length ? react : msg, t: Date.now() });
+  } catch { /* бот-токен или нет сети — останутся локальные «недавние» */ }
+  finally { frecencyLoading = false; }
+}
+// kind: 'react' | 'msg'. Discord-список + то, что вы недавно выбирали здесь, без повторов.
+function frequentEmoji(kind, n) {
+  const fr = store.get('frecency', null)?.[kind] || [];
+  const local = store.get('recentEmoji', []).map(ch => ({ ch }));
+  const seen = new Set(), out = [];
+  for (const e of [...fr, ...local, ...['👍', '❤️', '😂', '😮', '😢'].map(ch => ({ ch }))]) {
+    const k = e.id || e.ch; if (seen.has(k)) continue; seen.add(k); out.push(e);
+    if (out.length >= n) break;
+  }
+  return out;
+}
+const emoBtnHTML = e => e.id
+  ? `<button data-react="${esc(`${e.name}:${e.id}`)}" data-emo="${esc(`${e.animated ? 'a' : ''}:${e.name}:${e.id}`)}" data-rkey="${esc(`${e.name}:${e.id}`)}"><img src="https://cdn.discordapp.com/emojis/${e.id}.webp?size=64" alt=""></button>`
+  : `<button data-react="${esc(e.ch)}" data-emo="${esc(e.ch)}" data-rkey="${esc(e.ch)}">${esc(e.ch)}</button>`;
+
 function openSheet(id) {
   const m = findMsg(id);
   if (!m || m._pending || !$('#sheet').classList.contains('hidden')) return;
   sheetMsg = m;
+  if (Date.now() - (store.get('frecency', null)?.t || 0) > 6e5) loadFrecency();
   const mine = m.author?.id === S.me?.id;
   const sh = $('#sheet');
-  sh.querySelector('.quick-react').innerHTML = ['👍', '❤️', '😂', '😮', '😢'].map(e => `<button data-react="${e}">${e}</button>`).join('') +
+  sh.querySelector('.quick-react').innerHTML = frequentEmoji('react', 8).map(emoBtnHTML).join('') +
     '<button class="add" data-react-more="1" aria-label="Другая реакция"><svg class="stroke" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01M15 9.5h.01"/><path d="M19 2v6M16 5h6"/></svg></button>';
   sh.querySelector('[data-act=profile]').classList.toggle('hidden', !m.author || m.author.id === S.me?.id);
   sh.querySelector('[data-act=pin] span').textContent = m.pinned ? 'Открепить' : 'Закрепить';
@@ -2034,6 +2110,7 @@ const toB64 = file => new Promise((res, rej) => {
 const P = { tab: 'emoji', mode: 'insert', target: null, gifTimer: null, gifReq: 0 };
 async function openPicker(tab, mode = 'insert', target = null) {
   Object.assign(P, { tab, mode, target, gifView: 'home' });
+  if (Date.now() - (store.get('frecency', null)?.t || 0) > 6e5) loadFrecency().then(() => { if (P.tab === 'emoji' && !$('#picker').classList.contains('hidden')) renderPicker(); });
   $('#pickerSearch').value = '';
   $('.picker-tabs [data-tab=gif]').classList.toggle('hidden', mode === 'react');
   pushPanel();
@@ -2062,8 +2139,8 @@ function renderPicker() {
   if (custom.length) secs.push({ id: 'srv', icon: g && guildIcon(g) ? `<img src="${guildIcon(g)}" alt="">` : '⭐', name: g?.name || 'Сервер',
     html: custom.map(e => `<button data-emo="${esc(`${e.animated ? 'a' : ''}:${e.name}:${e.id}`)}" data-rkey="${esc(`${e.name}:${e.id}`)}" title=":${esc(e.name)}:"><img loading="lazy" src="https://cdn.discordapp.com/emojis/${e.id}.${e.animated ? 'gif' : 'webp'}?size=64" alt=""></button>`).join('') });
   if (!q) {
-    const recent = store.get('recentEmoji', []);
-    if (recent.length) secs.push({ id: 'rec', icon: '🕘', name: 'Недавние', html: recent.map(e => `<button data-emo="${esc(e)}" data-rkey="${esc(e)}">${esc(e)}</button>`).join('') });
+    const freq = frequentEmoji(P.mode === 'react' ? 'react' : 'msg', 24);
+    secs.unshift({ id: 'rec', icon: '🕘', name: 'Часто используемые', html: freq.map(emoBtnHTML).join('') });
     EMOJI_CATS.forEach((c, i) => secs.push({ id: 'c' + i, icon: c.icon, name: c.name, html: c.list.map(e => `<button data-emo="${e}" data-rkey="${e}">${e}</button>`).join('') }));
   }
   cats.innerHTML = secs.map(s => `<button data-cat-jump="${s.id}">${s.icon}</button>`).join('');
@@ -2362,6 +2439,7 @@ async function enterApp(me) {
   await selectGuild(gid);
   if (!S.channelId) openDrawer();
   autoCleanCheck();
+  setTimeout(loadFrecency, 3000);
   // уведомления: служба после перезапуска, первый выбор режима, открытие из шторки
   if (window.PcNotify) {
     if (N.mode === 'pocketcord') window.PcNotify.keepAlive(true);
@@ -2695,11 +2773,6 @@ function bind() {
     const m = findMsg(el.dataset.id); if (!m || m._pending || m._failed) return;
     lpCancel(); getSelection()?.removeAllRanges?.();
     navigator.vibrate?.(10);
-    const pop = document.createElement('div');
-    pop.className = 'react-pop'; pop.textContent = prefs.quickReact;
-    const r = el.getBoundingClientRect();
-    pop.style.left = (e.clientX || r.left + r.width / 2) + 'px'; pop.style.top = (e.clientY || r.top + r.height / 2) + 'px';
-    document.body.appendChild(pop); setTimeout(() => pop.remove(), 700);
     toggleReaction(m, prefs.quickReact, true);
   });
 
