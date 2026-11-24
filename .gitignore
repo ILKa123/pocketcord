@@ -1,0 +1,27 @@
+# сборки и большие файлы
+target/
+*.apk
+*.ipa
+*.zip
+*.aab
+*.so
+
+# Android: генерируется заново при сборке
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/build/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/app/src/main/jniLibs/
+src-tauri/gen/android/local.properties
+src-tauri/gen/android/**/generated/
+src-tauri/gen/android/keystore.properties
+*.jks
+*.keystore
+
+# iOS: проект создаётся в облачной сборке
+src-tauri/gen/apple/
+
+# секреты и личное — никогда не в репозиторий
+session.token
+*.token
+.env
+.claude/

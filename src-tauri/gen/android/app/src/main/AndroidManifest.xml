@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
+
+    <!-- чтобы видеть, установлен ли официальный Discord (Android 11+) -->
+    <queries>
+        <package android:name="com.discord" />
+    </queries>
+
+    <!-- AndroidTV support -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.pocketcord"
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:launchMode="singleTask"
+            android:label="@string/main_activity_title"
+            android:name=".MainActivity"
+            android:resizeableActivity="true"
+            android:exported="true">
+            <!-- размер плавающего окна (HyperOS/MIUI, freeform): шире, чем по умолчанию -->
+            <layout
+                android:defaultWidth="320dp"
+                android:defaultHeight="600dp"
+                android:minWidth="300dp"
+                android:minHeight="420dp"
+                android:gravity="center" />
+        </activity>
+
+        <!-- Значок на рабочем столе: включён один из «входов» (выбирается в Настройки → Оформление) -->
+        <activity-alias
+            android:name=".Icon_default"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher"
+            android:label="@string/main_activity_title"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_blurple"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_blurple"
+            android:roundIcon="@mipmap/ic_alt_blurple"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_pink"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_pink"
+            android:roundIcon="@mipmap/ic_alt_pink"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_sunset"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_sunset"
+            android:roundIcon="@mipmap/ic_alt_sunset"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_ocean"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_ocean"
+            android:roundIcon="@mipmap/ic_alt_ocean"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+
+
+        <activity-alias
+            android:name=".Icon_flushed"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_flushed"
+            android:roundIcon="@mipmap/ic_alt_flushed"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_owo"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_owo"
+            android:roundIcon="@mipmap/ic_alt_owo"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_bunny"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_bunny"
+            android:roundIcon="@mipmap/ic_alt_bunny"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".Icon_lilac"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_alt_lilac"
+            android:roundIcon="@mipmap/ic_alt_lilac"
+            android:label="@string/main_activity_title"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <!-- Кнопки «Ответить» / «Пометить прочитанным» в уведомлении -->
+        <receiver
+            android:name=".NotifyActionReceiver"
+            android:exported="false" />
+
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
+
+        <provider
+          android:name="androidx.core.content.FileProvider"
+          android:authorities="${applicationId}.fileprovider"
+          android:exported="false"
+          android:grantUriPermissions="true">
+          <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

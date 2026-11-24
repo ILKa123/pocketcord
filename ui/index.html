@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e1f22">
+  <title>Pocketcord</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Вход -->
+<section id="login" class="screen hidden">
+  <div class="login-card">
+    <img class="logo" src="logo.png" alt="Pocketcord">
+    <h1>С возвращением!</h1>
+    <p class="muted">Войдите с помощью токена</p>
+    <label class="field-label">ТОКЕН</label>
+    <div class="token-row">
+      <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставьте токен">
+      <button id="tokenEye" type="button" aria-label="Показать токен">👁</button>
+    </div>
+    <label class="check"><input id="botToggle" type="checkbox"> Это токен бота</label>
+    <button id="guideBtn" type="button" class="guide-link">📖 Как получить токен?</button>
+    <button id="loginBtn" class="btn-primary">Войти</button>
+    <button id="demoBtn" class="btn-link">Открыть демо без входа</button>
+    <p id="loginError" class="error"></p>
+    <p class="warn">Вход пользовательским токеном в сторонний клиент нарушает правила Discord, и аккаунт могут заблокировать. С токеном бота так делать можно.</p>
+  </div>
+
+  <!-- Гайд: где взять токен -->
+  <div id="guide" class="hidden">
+    <div class="guide-body">
+      <header><b>Как получить токен</b><button id="guideClose" aria-label="Закрыть">✕</button></header>
+      <div class="guide-tabs">
+        <button data-gtab="user" class="active">Мой аккаунт</button>
+        <button data-gtab="bot">Бот</button>
+      </div>
+
+      <div class="guide-page" data-gpage="user">
+        <p class="g-note">Видны <b>все ваши серверы и личные сообщения</b>, как в обычном Discord. Нужен компьютер (браузер Chrome, Edge или Firefox).</p>
+        <ol>
+          <li>На компьютере откройте <b>discord.com/app</b> в браузере и войдите в свой аккаунт.</li>
+          <li>Нажмите <kbd>F12</kbd> (или <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd>) — откроются инструменты разработчика.</li>
+          <li>Перейдите на вкладку <b>Network</b> (Сеть). В поле фильтра напишите <code>api</code>.</li>
+          <li>Откройте любой канал или ЛС в Discord, чтобы в списке появились запросы (например, <code>messages?limit=50</code>).</li>
+          <li>Нажмите на любой такой запрос → вкладка <b>Headers</b> (Заголовки) → раздел <b>Request Headers</b>.</li>
+          <li>Найдите строку <code>authorization</code> и скопируйте её значение целиком — это длинная строка из трёх частей через точку.</li>
+          <li>Перешлите её себе на телефон (например, в «Избранное» мессенджера), вставьте в поле «Токен», <b>снимите</b> галочку «Это токен бота» и нажмите «Войти».</li>
+        </ol>
+        <div class="g-warn">
+          <b>⚠ Важно</b>
+          <ul>
+            <li>Токен = пароль от аккаунта. Никому его не отправляйте и не показывайте на скриншотах.</li>
+            <li>Вход токеном в сторонний клиент нарушает правила Discord — аккаунт могут заблокировать. Используйте на свой риск.</li>
+            <li>Если токен утёк — смените пароль Discord: все старые токены сразу перестанут работать.</li>
+            <li>После выхода из аккаунта в браузере токен может смениться — тогда войдите в Pocketcord заново.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="guide-page hidden" data-gpage="bot">
+        <p class="g-note">Безопасно и разрешено правилами, но бот видит <b>только серверы, куда вы его добавили</b>. ЛС — только те, что пишут самому боту.</p>
+        <ol>
+          <li>Откройте <b>discord.com/developers/applications</b> и войдите.</li>
+          <li><b>New Application</b> → введите имя → создать.</li>
+          <li>Слева <b>Bot</b> → <b>Reset Token</b> → скопируйте токен (показывается один раз).</li>
+          <li>Там же включите <b>Message Content Intent</b> и <b>Server Members Intent</b> → Save Changes.</li>
+          <li>Слева <b>OAuth2</b> → <b>URL Generator</b>: отметьте <code>bot</code>, ниже права <i>View Channels, Send Messages, Read Message History, Add Reactions, Attach Files, Manage Messages</i>.</li>
+          <li>Откройте получившуюся ссылку и добавьте бота на свой сервер.</li>
+          <li>В Pocketcord вставьте токен, <b>поставьте</b> галочку «Это токен бота» и нажмите «Войти».</li>
+        </ol>
+        <div class="g-warn"><b>⚠</b> Токен бота тоже секретный: с ним любой сможет управлять ботом. Утёк — нажмите Reset Token.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Приложение -->
+<section id="app" class="screen hidden">
+  <!-- Левая панель: серверы + каналы (как на ПК) -->
+  <aside id="drawer">
+    <nav id="guildRail"></nav>
+    <div id="channelPane">
+      <header id="guildHeader"><span id="guildName"></span></header>
+      <input id="iconInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+      <div id="channelList"></div>
+      <div id="statusMenu" class="hidden"></div>
+      <footer id="userPanel"></footer>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+
+  <!-- Чат -->
+  <main id="chat">
+    <header id="chatHeader">
+      <button id="menuBtn" class="icon-btn" aria-label="Каналы">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+        <span id="unreadBadge" class="badge hidden"></span>
+      </button>
+      <div class="chat-title"><span class="hash">#</span><span id="channelName">…</span><span id="chatStatus" class="hidden"></span><span id="channelTopic"></span></div>
+      <button id="callBtn" class="icon-btn small hidden" aria-label="Позвонить" title="Позвонить (в официальном Discord)">
+        <svg class="stroke" viewBox="0 0 24 24"><path d="M5 4h3l1.6 4-2 1.3a11 11 0 0 0 5.1 5.1l1.3-2 4 1.6v3a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+      </button>
+      <button id="pinsBtn" class="icon-btn" aria-label="Закреплённые" title="Закреплённые">
+        <svg viewBox="0 0 24 24"><path d="M19.4 9.4 14.6 4.6a1 1 0 0 0-1.6.3l-1.4 3.3-3.9 1.3a1 1 0 0 0-.4 1.6l2.3 2.3-4.9 4.9 1.4 1.4 4.9-4.9 2.3 2.3a1 1 0 0 0 1.6-.4l1.3-3.9 3.3-1.4a1 1 0 0 0 .3-1.6z"/></svg>
+      </button>
+      <button id="membersBtn" class="icon-btn hidden" aria-label="Участники" title="Участники">
+        <svg class="stroke" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg>
+      </button>
+      <button id="searchBtn" class="icon-btn" aria-label="Поиск" title="Поиск">
+        <svg class="stroke" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
+      </button>
+    </header>
+    <div id="status" class="hidden"></div>
+    <div id="messages"><div id="msgInner"></div></div>
+    <div id="typing"></div>
+    <div id="composer">
+      <div id="replyBar" class="hidden"><span id="replyText"></span><button id="replyCancel">✕</button></div>
+      <div id="acBox" class="hidden"></div>
+      <div id="attachBar" class="hidden"></div>
+      <div id="clipHint" class="hidden"><span>📋 Вставить скопированную картинку</span><button class="x" aria-label="Скрыть">✕</button></div>
+      <div class="composer-row">
+        <button id="attachBtn" class="c-btn plus" aria-label="Прикрепить файл">
+          <svg viewBox="0 0 24 24"><path d="M13 11V5h-2v6H5v2h6v6h2v-6h6v-2z"/></svg>
+        </button>
+        <input id="fileInput" type="file" multiple hidden>
+        <textarea id="input" rows="1" placeholder="Написать…"></textarea>
+        <button id="gifBtn" class="c-btn" aria-label="GIF"><span class="gif-ic">GIF</span></button>
+        <button id="emojiBtn" class="c-btn" aria-label="Эмодзи">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-3.5 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM12 18a6 6 0 0 1-5.2-3h10.4A6 6 0 0 1 12 18z"/></svg>
+        </button>
+        <button id="sendBtn" class="send hidden" aria-label="Отправить">
+          <svg viewBox="0 0 24 24"><path d="M3 20.5v-6l9-2.5-9-2.5v-6l19 8.5z"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Правая панель: закреплённые / поиск / профиль -->
+  <aside id="sidePanel">
+    <header><span id="sideIcon"></span><span id="sideTitle"></span><button id="sideClose" class="icon-btn">✕</button></header>
+    <div id="sideBody"></div>
+  </aside>
+
+  <!-- Выбор эмодзи и GIF -->
+  <div id="picker" class="hidden">
+    <div class="picker-body">
+      <div class="picker-tabs">
+        <button data-tab="emoji">Эмодзи</button>
+        <button data-tab="gif">GIF</button>
+      </div>
+      <input id="pickerSearch" type="search" placeholder="Поиск">
+      <div id="pickerCats"></div>
+      <div id="pickerGrid"></div>
+    </div>
+  </div>
+
+  <!-- Действия с сообщением -->
+  <div id="sheet" class="hidden">
+    <div class="sheet-body">
+      <div class="quick-react"></div>
+      <div class="sheet-group">
+        <button data-act="reply"><span>Ответить</span><svg class="stroke" viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h10a6 6 0 0 1 6 6v1"/></svg></button>
+        <button data-act="edit"><span>Редактировать</span><svg class="stroke" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></button>
+        <button data-act="copy"><span>Копировать текст</span><svg class="stroke" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+      </div>
+      <div class="sheet-group">
+        <button data-act="pin"><span>Закрепить</span><svg class="stroke" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 15v5"/></svg></button>
+        <button data-act="profile"><span>Профиль</span><svg class="stroke" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4.2-6 8-6s7 2 8 6"/></svg></button>
+        <button data-act="link"><span>Открыть в Discord</span><svg class="stroke" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="m20 4-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></button>
+      </div>
+      <div class="sheet-group">
+        <button data-act="delete" class="danger"><span>Удалить</span><svg class="stroke" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <!-- Настройки: профиль, сообщения, оформление -->
+  <div id="settings" class="hidden">
+    <header>
+      <button id="setClose" class="icon-btn" aria-label="Закрыть"><svg class="stroke" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
+      <b>Настройки</b>
+    </header>
+    <div class="set-tabs">
+      <button data-stab="profile" class="active">Профиль</button>
+      <button data-stab="messages">Сообщения</button>
+      <button data-stab="look">Оформление</button>
+    </div>
+    <div id="setBody"></div>
+    <input id="avatarInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+    <input id="bgInput" type="file" accept="image/*" hidden>
+  </div>
+
+  <!-- Универсальное нижнее меню (папки, «+») -->
+  <div id="menu" class="hidden">
+    <div class="menu-body"><div class="menu-title"></div><div class="menu-list"></div></div>
+  </div>
+  <div id="toast" class="hidden"></div>
+  <div id="lightbox" class="hidden"><img alt="" draggable="false"><button class="lb-close" aria-label="Закрыть">✕</button></div>
+</section>
+
+<script src="emoji.js"></script>
+<script src="demo.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
