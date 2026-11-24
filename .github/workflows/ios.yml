@@ -25,8 +25,11 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: Установщик готовых программ
+        uses: cargo-bins/cargo-binstall@main
+
       - name: Tauri CLI
-        run: cargo install tauri-cli --version "^2" --locked
+        run: cargo binstall tauri-cli --version "^2" -y --force || cargo install tauri-cli --version "^2" --locked
 
       - name: Проект Xcode
         working-directory: src-tauri
@@ -44,7 +47,7 @@ jobs:
           done
           grep -n "LIBRARY_SEARCH_PATHS\|libapp" gen/apple/*.xcodeproj/project.pbxproj | head -20 || true
           # шаг «Build Rust Code» в Xcode больше не нужен
-          sed -i '' 's/cargo tauri ios xcode-script[^"]*/echo rust-prebuilt/' gen/apple/*.xcodeproj/project.pbxproj
+          perl -0pi -e 's/shellScript = "cargo tauri ios xcode-script.*?";\n/shellScript = "echo rust-prebuilt\\n";\n/s' gen/apple/*.xcodeproj/project.pbxproj
           grep -n "rust-prebuilt" gen/apple/*.xcodeproj/project.pbxproj | head -3
 
       - name: Сборка без подписи
