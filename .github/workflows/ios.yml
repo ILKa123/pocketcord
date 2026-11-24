@@ -25,11 +25,10 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Установщик готовых программ
-        uses: cargo-bins/cargo-binstall@main
-
+      # собираем под Apple-чип (готовая версия из интернета — для Intel и ломается под эмулятором);
+      # после первой удачной сборки она берётся из кэша
       - name: Tauri CLI
-        run: cargo binstall tauri-cli --version "^2" -y --force || cargo install tauri-cli --version "^2" --locked
+        run: which cargo-tauri || cargo install tauri-cli --version "^2" --locked
 
       - name: Проект Xcode
         working-directory: src-tauri
