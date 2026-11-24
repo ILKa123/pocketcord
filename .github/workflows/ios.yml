@@ -32,6 +32,21 @@ jobs:
         working-directory: src-tauri
         run: cargo tauri ios init --ci
 
+      # Tauri собирает Rust изнутри Xcode только вместе с `tauri ios build` (а он требует платную подпись).
+      # Поэтому собираем Rust-библиотеку заранее и подкладываем туда, где Xcode её ищет.
+      - name: Rust-библиотека для iPhone
+        working-directory: src-tauri
+        run: |
+          cargo build --release --lib --target aarch64-apple-ios
+          for cfg in release Release; do
+            mkdir -p gen/apple/Externals/arm64/$cfg
+            cp target/aarch64-apple-ios/release/libpocketcord_lib.a gen/apple/Externals/arm64/$cfg/libapp.a
+          done
+          grep -n "LIBRARY_SEARCH_PATHS\|libapp" gen/apple/*.xcodeproj/project.pbxproj | head -20 || true
+          # шаг «Build Rust Code» в Xcode больше не нужен
+          sed -i '' 's/cargo tauri ios xcode-script[^"]*/echo rust-prebuilt/' gen/apple/*.xcodeproj/project.pbxproj
+          grep -n "rust-prebuilt" gen/apple/*.xcodeproj/project.pbxproj | head -3
+
       - name: Сборка без подписи
         working-directory: src-tauri/gen/apple
         run: |
