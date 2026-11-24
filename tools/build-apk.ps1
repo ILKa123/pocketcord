@@ -49,7 +49,8 @@ Set-Location $android
 if ($LASTEXITCODE -ne 0) { Write-Output "GRADLE FAILED - APK not updated"; exit 1 }
 $apk = Get-ChildItem "$android\app\build\outputs\apk" -Recurse -Filter *.apk | Where-Object { $_.FullName -match $profile } |
   Sort-Object LastWriteTime -Descending | Select-Object -First 1
-$out = if ($Release) { "$root\Pocketcord-1.3.0-arm64.apk" } else { "$root\Pocketcord-debug-arm64.apk" }
+$ver = (Get-Content "$root\src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json).version
+$out = if ($Release) { "$root\Pocketcord-$ver-arm64.apk" } else { "$root\Pocketcord-debug-arm64.apk" }
 Copy-Item $apk.FullName $out -Force
 Write-Output ("{0} {1:N1} MB" -f (Split-Path $out -Leaf), ((Get-Item $out).Length / 1MB))
 

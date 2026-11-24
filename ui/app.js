@@ -418,13 +418,15 @@ function chanTitle(c) {
 
 // ---------------- настройки: профиль, сообщения, оформление ----------------
 const GEAR_SVG = '<svg class="stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
-const PREF_DEFAULTS = { fontSize: 16, compact: false, embeds: true, gifAutoplay: true, jumbo: true, enterSend: false, theme: 'default', bgDim: 0.45 };
+const PREF_DEFAULTS = { fontSize: 16, compact: false, embeds: true, gifAutoplay: true, jumbo: true, enterSend: false, theme: 'default', bgDim: 0.45, quickReact: '❤️' };
+const QUICK_REACTS = ['❤️', '👍', '😂', '🔥', '💀', '😭'];
 let prefs = { ...PREF_DEFAULTS, ...store.get('prefs', {}) };
 const setPref = (k, v) => { prefs[k] = v; store.set('prefs', prefs); applyPrefs(); };
 
 // Темы — только у вас на телефоне; другие люди видят Discord как обычно.
 const THEMES = [
   { id: 'default', name: 'Как в Discord', bg: '#313338' },
+  { id: 'amoled', name: 'AMOLED — чёрная, бережёт батарею', bg: '#000', amoled: true },
   { id: 'mint', name: 'Мята', bg: 'linear-gradient(160deg,#a8e6cf,#dcedc1)', light: true },
   { id: 'peach', name: 'Персик', bg: 'linear-gradient(160deg,#ffd194,#f6a5a5)', light: true },
   { id: 'lavender', name: 'Лаванда', bg: 'linear-gradient(160deg,#c3b5e8,#a1c4fd)', light: true },
@@ -464,13 +466,16 @@ function applyPrefs() {
   // тема: свой фон-картинка или пресет
   const img = prefs.theme === 'custom' ? store.get('bgImage', null) : null;
   const t = THEMES.find(x => x.id === prefs.theme);
-  const themed = !!img || (t && t.id !== 'default');
+  // AMOLED — сплошной чёрный без размытия (размытие у других тем дороже для видеокарты)
+  const amoled = !img && !!t?.amoled;
+  b.classList.toggle('amoled', amoled);
+  const themed = !!img || (t && t.id !== 'default' && !amoled);
   b.classList.toggle('themed', themed);
   b.classList.toggle('light', !img && !!t?.light);
   if (img) b.style.setProperty('--theme-bg', `linear-gradient(rgba(0,0,0,${prefs.bgDim}),rgba(0,0,0,${prefs.bgDim})),url("${img}") center/cover`);
   else if (themed) b.style.setProperty('--theme-bg', t.bg);
   else b.style.removeProperty('--theme-bg');
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', themed ? '#000000' : '#1e1f22');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', themed || amoled ? '#000000' : '#1e1f22');
 }
 const vidAttrs = () => prefs.gifAutoplay ? 'autoplay loop muted playsinline' : 'loop muted playsinline preload="metadata"';
 
@@ -570,6 +575,11 @@ function renderMessageSettings(box) {
     ${toggleRow('jumbo', 'Крупные эмодзи', 'Сообщение из одних эмодзи показывается крупно')}
     ${toggleRow('enterSend', 'Отправка по Enter', 'Кнопка ↵ на клавиатуре отправляет сообщение, а не переносит строку')}
   </div>
+  <div class="set-sec">
+    <label class="set-lbl">Двойной тап по сообщению</label>
+    <p class="set-note">Ставит реакцию. Ответить — смахнуть сообщение влево.</p>
+    <div class="set-seg emo">${QUICK_REACTS.map(e => `<button data-qreact="${e}" class="${prefs.quickReact === e ? 'on' : ''}">${e}</button>`).join('')}<button data-qreact="" class="${prefs.quickReact ? '' : 'on'}">Выкл</button></div>
+  </div>
   ${storageHTML()}`;
 }
 
@@ -657,6 +667,7 @@ function bindSettings() {
       { label: 'Отмена', fn: () => {} }]);
     const f = t.closest('[data-font]'); if (f) { setPref('fontSize', +f.dataset.font); return renderSettings(); }
     if (t.closest('#clearCache')) return clearCacheNow();
+    const qr = t.closest('[data-qreact]'); if (qr) { setPref('quickReact', qr.dataset.qreact); return renderSettings(); }
     const ac = t.closest('[data-autoclean]'); if (ac) { setPref('autoClean', ac.dataset.autoclean); return renderSettings(); }
     const th = t.closest('[data-theme]'); if (th) { setPref('theme', th.dataset.theme); return renderSettings(); }
     const bg = t.closest('[data-bg]');
@@ -1160,6 +1171,7 @@ async function openChannel(cid, { closeDrawer = true, around = null } = {}) {
   const ch = S.chanById.get(cid);
   if (!ch) return;
   const changed = S.channelId !== cid;
+  if (changed && S.channelId) saveDraft(S.channelId);
   S.channelId = cid;
   S.lastChannel[ch.guild_id || '@me'] = cid; store.set('lastChannel', S.lastChannel);
   store.set('lastGuild', ch.guild_id || '@me');
@@ -1177,7 +1189,8 @@ async function openChannel(cid, { closeDrawer = true, around = null } = {}) {
   renderHeaderStatus();
   if (changed && sideOpen('members')) { if (ch.guild_id) loadMembers(); else closePanels(); }
   if (changed) {
-    cancelReply(); clearFiles();
+    cancelReply(); clearFiles(); hideAc();
+    loadDraft(cid);
     S.search = { q: '', results: [], total: 0, loading: false, error: '' };
     if (S.side === 'search' && sideOpen()) { $('#sideBody').innerHTML = ''; renderSearch(); }
     if (sideOpen('pins')) renderPins();
@@ -1697,7 +1710,7 @@ async function sheetAction(act) {
   }
   if (act === 'profile') { openProfile(m.author.id); return; }
   if (act === 'link') { openExternal(channelLink(m.channel_id, m.id)); return; }
-  if (act === 'edit') { S.editing = m; S.reply = null; showReplyBar('Редактирование сообщения'); $('#input').value = m.content; autoGrow(); $('#input').focus(); }
+  if (act === 'edit') { saveDraft(); S.editing = m; S.reply = null; showReplyBar('Редактирование сообщения'); $('#input').value = m.content; autoGrow(); $('#input').focus(); }
   if (act === 'delete') {
     if (!confirm('Удалить сообщение?')) return;
     try { await B.del(m.channel_id, m.id); } catch (e) { toast(errText(e)); }
@@ -1706,9 +1719,23 @@ async function sheetAction(act) {
 
 function showReplyBar(html) { $('#replyText').innerHTML = html; $('#replyBar').classList.remove('hidden'); }
 function cancelReply() {
-  if (S.editing) $('#input').value = '';
-  S.reply = null; S.editing = null; $('#replyBar').classList.add('hidden'); autoGrow();
+  const wasEditing = !!S.editing;
+  S.reply = null; S.editing = null; $('#replyBar').classList.add('hidden');
+  if (wasEditing) loadDraft(S.channelId); else autoGrow(); // после редактирования вернуть недописанное
 }
+
+// --- черновики: недописанный текст хранится для каждого канала отдельно ---
+const drafts = store.get('drafts', {});
+let draftTimer = null;
+function saveDraft(cid = S.channelId) {
+  clearTimeout(draftTimer); draftTimer = null;
+  if (!cid || S.editing) return; // текст редактируемого сообщения — не черновик
+  const v = $('#input').value;
+  if (v.trim()) drafts[cid] = v.slice(0, 4000); else if (drafts[cid] == null) return; else delete drafts[cid];
+  store.set('drafts', drafts);
+}
+const saveDraftSoon = () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 500); };
+function loadDraft(cid) { $('#input').value = (cid && drafts[cid]) || ''; autoGrow(); }
 
 // ---------------- отправка ----------------
 let pendingSeq = 0, lastTyping = 0;
@@ -2138,6 +2165,7 @@ async function send() {
   const cid = S.channelId;
   if ((!content && !S.files.length) || !cid) return;
   input.value = ''; autoGrow(); hideAc();
+  if (!S.editing && drafts[cid] != null) { delete drafts[cid]; store.set('drafts', drafts); clearTimeout(draftTimer); }
   if (S.editing) {
     const m = S.editing; cancelReply();
     if (content !== m.content) try { await B.edit(m.channel_id, m.id, content); } catch (e) { toast(errText(e)); }
@@ -2495,6 +2523,7 @@ function bind() {
   input.addEventListener('input', () => {
     autoGrow();
     updateAc();
+    saveDraftSoon();
     if (input.value && Date.now() - lastTyping > 8000 && S.channelId) { lastTyping = Date.now(); B.typing(S.channelId).catch(() => {}); }
   });
   input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input && !acStart) hideAc(); }, 250));
@@ -2659,11 +2688,62 @@ function bind() {
     const el = e.target.closest('.m[data-id]'); if (!el) return;
     e.preventDefault(); lpCancel(); openSheet(el.dataset.id);
   });
-  // двойной тап по сообщению — быстрый ответ (как свайп в мобильном клиенте)
+  // двойной тап по сообщению — быстрая реакция (выбирается в настройках)
   $('#msgInner').addEventListener('dblclick', e => {
-    const el = e.target.closest('.m[data-id]'); if (!el || !isTouch) return;
-    const m = findMsg(el.dataset.id); if (m && !m._pending) { sheetMsg = m; sheetAction('reply'); }
+    const el = e.target.closest('.m[data-id]'); if (!el || !isTouch || !prefs.quickReact) return;
+    if (e.target.closest('a,button,video,img.att-img,.att,.spoiler,.reactions')) return;
+    const m = findMsg(el.dataset.id); if (!m || m._pending || m._failed) return;
+    lpCancel(); getSelection()?.removeAllRanges?.();
+    navigator.vibrate?.(10);
+    const pop = document.createElement('div');
+    pop.className = 'react-pop'; pop.textContent = prefs.quickReact;
+    const r = el.getBoundingClientRect();
+    pop.style.left = (e.clientX || r.left + r.width / 2) + 'px'; pop.style.top = (e.clientY || r.top + r.height / 2) + 'px';
+    document.body.appendChild(pop); setTimeout(() => pop.remove(), 700);
+    toggleReaction(m, prefs.quickReact, true);
   });
+
+  // свайп сообщения влево — ответить на него (как в Telegram)
+  let sw = null, swUsed = false; // swUsed — жест уже ушёл на ответ, панели не открываем
+  const swReset = () => {
+    if (!sw) return;
+    const { el } = sw; sw = null;
+    el.style.transition = 'transform .18s ease'; el.style.transform = '';
+    el.querySelector('.swipe-ico')?.remove();
+    setTimeout(() => { el.style.transition = ''; }, 200);
+  };
+  $('#msgInner').addEventListener('touchstart', e => {
+    const el = e.target.closest('.m[data-id]');
+    sw = null;
+    if (!el || e.touches.length > 1 || e.target.closest('pre, .att, a, video')) return;
+    const t = e.touches[0];
+    sw = { el, x: t.clientX, y: t.clientY, dx: 0, on: false, dead: false };
+  }, { passive: true });
+  $('#msgInner').addEventListener('touchmove', e => {
+    if (!sw || sw.dead) return;
+    const t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if (!sw.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw.dead = true; return; } // это прокрутка
+      if (dx > -14 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+      sw.on = true; swUsed = true; lpCancel();
+      const ico = document.createElement('span'); ico.className = 'swipe-ico'; ico.innerHTML = '↩';
+      sw.el.appendChild(ico);
+    }
+    sw.dx = Math.max(-90, Math.min(0, dx));
+    sw.el.style.transform = `translateX(${sw.dx}px)`;
+    const ico = sw.el.querySelector('.swipe-ico');
+    const ready = sw.dx <= -60;
+    if (ico) { ico.style.opacity = Math.min(1, -sw.dx / 60); ico.classList.toggle('ready', ready); }
+    if (ready && !sw.buzzed) { sw.buzzed = true; navigator.vibrate?.(8); } else if (!ready) sw.buzzed = false;
+  }, { passive: true });
+  $('#msgInner').addEventListener('touchend', () => {
+    if (sw?.on && sw.dx <= -60) {
+      const m = findMsg(sw.el.dataset.id);
+      if (m && !m._pending && !m._failed) { sheetMsg = m; sheetAction('reply'); }
+    }
+    swReset();
+  }, { passive: true });
+  $('#msgInner').addEventListener('touchcancel', swReset, { passive: true });
 
   $('#sheet').addEventListener('click', e => {
     if (e.target === $('#sheet')) return closePanels();
@@ -2679,9 +2759,9 @@ function bind() {
 
   // свайпы: вправо — каналы, влево — закреплённые
   let sx = 0, sy = 0, tracking = false;
-  $('#app').addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tracking = !e.target.closest('pre, .att, textarea, #lightbox, #menu'); }, { passive: true });
+  $('#app').addEventListener('touchstart', e => { swUsed = false; const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tracking = !e.target.closest('pre, .att, textarea, #lightbox, #menu'); }, { passive: true });
   $('#app').addEventListener('touchend', e => {
-    if (!tracking || wide()) return;
+    if (!tracking || wide() || swUsed) return;
     const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
     const app = $('#app');
@@ -2694,7 +2774,7 @@ function bind() {
   // сеть вернулась (Wi-Fi <-> мобильный интернет) — тоже проверить связь сразу
   addEventListener('online', () => B?.wake?.().catch(() => {}));
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') { saveDraft(); return; }
     B?.wake?.().catch(() => {}); // вернулись в приложение — сразу проверить связь
     if (!S.channelId) return;
     scheduleAck();
